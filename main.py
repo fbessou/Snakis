@@ -20,16 +20,20 @@ def _rand_col():
 class Board(object):
     def __init__(self):
         self._size = (12,24)
-
+        self._scale = int(height / self._size[1])
+        self._buffer = pygame.Surface((self._scale*self._size[0], self._scale*self._size[1]))
+        self._seed = random.random()
+    
     def render(self):
-        random.seed(0)
-        w = width/self._size[0]
-        h = height/self._size[1]
-        w = min(w,h)
-        h = min(w,h)
+        random.seed(self._seed)
+        s = self._scale
         for y in range(self._size[1]):
             for x in range(self._size[0]):
-                pygame.draw.rect(screen, _rand_col(), [x*w, height - (y+1)*h, w, h])
+                pygame.draw.rect(self._buffer, _rand_col(), [x*s, self._buffer.get_height() - (y+1)*s, s, s])
+
+        # draw buffer on screen
+        screen.blit(self._buffer, [(screen.get_width()-self._buffer.get_width()) / 2,
+            (screen.get_height()-self._buffer.get_height()) / 2])
 
 class RoundState(object):
     def __init__(self, player_inputs):
@@ -52,6 +56,7 @@ class RoundState(object):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT: sys.exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE: sys.exit() 
         
         #x+=SPEED[0]
         #y+=SPEED[1]
