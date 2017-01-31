@@ -1,10 +1,11 @@
 """ GAME """
 import sys, pygame
+import random
 from time import sleep
 from player_inputs import PlayerInputs
 pygame.init()
 
-SIZE = width, height = 320, 240
+SIZE = width, height = 720, 600
 SPEED = [2, 2]
 BLACK = 0, 0, 0
 BLUE = 0, 20, 255
@@ -13,12 +14,29 @@ screen = pygame.display.set_mode(SIZE)
 x = 19
 y = 20
 s = 17
+def _rand_col():
+    return [ random.getrandbits(8) for _ in range(3)]
+
+class Board(object):
+    def __init__(self):
+        self._size = (12,24)
+
+    def render(self):
+        random.seed(0)
+        w = width/self._size[0]
+        h = height/self._size[1]
+        w = min(w,h)
+        h = min(w,h)
+        for y in range(self._size[1]):
+            for x in range(self._size[0]):
+                pygame.draw.rect(screen, _rand_col(), [x*w, height - (y+1)*h, w, h])
 
 class RoundState(object):
     def __init__(self, player_inputs):
         self.player_inputs = player_inputs
         self.player1_color = 16, 32, 53
         self.player2_color = 112, 125, 32
+        self.board = Board()
     
     def loop(self):
         while 1:
@@ -44,8 +62,9 @@ class RoundState(object):
         
     def _render(self):
         self._clear()
+        self.board.render()
         #pygame.draw.circle(screen, BLUE, [x,y], s)
-        #pygame.display.flip()
+        pygame.display.flip()
 
     def _clear(self):
         screen.fill(BLACK)
