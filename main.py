@@ -1,8 +1,10 @@
 """ GAME """
 import sys, pygame
+import numpy as np
 import random
 from time import sleep
 from player_inputs import PlayerInputs
+from collections import namedtuple
 pygame.init()
 
 SIZE = width, height = 720, 600
@@ -17,9 +19,12 @@ s = 17
 def _rand_col():
     return [ random.getrandbits(8) for _ in range(3)]
 
+Tile = namedtuple("Tile",field_names=["player","type","data"])
+
 class Board(object):
     def __init__(self):
         self._size = (12,24)
+        self._tiles = np.zeros(self._size, dtype=object)
 
     def render(self):
         random.seed(0)
@@ -34,8 +39,7 @@ class Board(object):
 class RoundState(object):
     def __init__(self, player_inputs):
         self.player_inputs = player_inputs
-        self.player1_color = 16, 32, 53
-        self.player2_color = 112, 125, 32
+        self.players = []
         self.board = Board()
     
     def loop(self):
@@ -52,13 +56,6 @@ class RoundState(object):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT: sys.exit()
-        
-        #x+=SPEED[0]
-        #y+=SPEED[1]
-        #if x-s< 0 or x+s > width:
-        #    SPEED[0] = -SPEED[0]
-        #if y-s < 0 or y+s > height:
-        #    SPEED[1] = -SPEED[1]
         
     def _render(self):
         self._clear()

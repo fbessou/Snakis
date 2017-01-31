@@ -1,4 +1,7 @@
 import pygame
+from collections import namedtuple
+
+PlayerInput = namedtuple("PlayerInput",field_names=["player","action","keydown"])
 
 class PlayerInputs:
     def __init__(self):
@@ -17,7 +20,7 @@ class PlayerInputs:
             if event.type == pygame.KEYUP or keydown:
                 for player in range(len(self._mapping)):
                     if event.key in self._mapping[player]:
-                        inputs.append((player, self._mapping[player][event.key], keydown))
+                        inputs.append(PlayerInput(player, self._mapping[player][event.key], keydown))
                         used = True
             if not used:
                 pygame.event.post(event)
