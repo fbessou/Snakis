@@ -1,10 +1,13 @@
+#!/usr/bin/python3.5
 """ GAME """
-import sys, pygame
-import numpy as np
+import sys
 import random
 from time import sleep
-from player_inputs import PlayerInputs
 from collections import namedtuple
+import numpy as np
+import pygame
+from player_inputs import PlayerInputs
+print(pygame.__file__)
 pygame.init()
 
 SIZE = width, height = 720, 600
@@ -12,22 +15,21 @@ SPEED = [2, 2]
 BLACK = 0, 0, 0
 BLUE = 0, 20, 255
 
-screen = pygame.display.set_mode(SIZE)
-x = 19
-y = 20
-s = 17
-def _rand_col():
-    return [ random.getrandbits(8) for _ in range(3)]
+screen = pygame.display.set_mode(SIZE, pygame.RESIZABLE)
 
-Tile = namedtuple("Tile",field_names=["player","type","data"])
+def _rand_col():
+    return [random.getrandbits(8) for _ in range(3)]
+
+Tile = namedtuple("Tile", field_names=["player", "type", "data"])
 
 class Board(object):
     def __init__(self):
-        self._size = (12,24)
+        self._size = (12, 24)
         self._tiles = np.zeros(self._size, dtype=object)
         self._scale = int(height / self._size[1])
         self._buffer = pygame.Surface((self._scale*self._size[0], self._scale*self._size[1]))
         self._seed = random.random()
+
     def render(self):
         random.seed(self._seed)
         s = self._scale
@@ -60,7 +62,7 @@ class RoundState(object):
         for event in pygame.event.get():
             if event.type == pygame.QUIT: sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE: sys.exit() 
-        
+
     def _render(self):
         self._clear()
         self.board.render()
@@ -71,7 +73,7 @@ class RoundState(object):
         screen.fill(BLACK)
 
 def main():
-    player_inputs = PlayerInputs() 
+    player_inputs = PlayerInputs()
     game = RoundState(player_inputs)
     game.loop()
 if __name__ == "__main__":
