@@ -24,8 +24,9 @@ def connectedComponent(size, grp):
     return (comp, group)
 
 # Fill a matrix with the given 'value',
-# start at position (i,j) and recursively fill adjencent cases (DFS: depth first search)
+# start at position (i,j) and recursively fill adjencent square (DFS: depth first search)
 # if they respect the constraint defined by the function 'allow(i,j)'
+# Return the number the number of filled squares
 def dfsFill(matrix, i, j, value, allow):
     count = 0
 
@@ -76,6 +77,7 @@ def collide(size, blocks, collision, items_shift=(0,0), allow_out_of_bounds=(Fal
 # Build items fall dependencies.
 # items: for each item, an array of position of blocks
 # fallingDirection: direction in which the items will fall, norm should be 1
+# Return the matrix of boolean: isAboveMatrix[i][j] means that item i is just above item j
 def fallingDependencies(items, fallingDirection = (0, -1)):
     isAboveMatrix = np.zeros(len(items), len(items), dtype=bool)
     for i in range(len(items)):
@@ -96,6 +98,7 @@ def fallingDependencies(items, fallingDirection = (0, -1)):
 # size: playground size
 # collision(i, j): it defines if collision occurs when an item is at index (i, j),
 # allow_out_of_bounds: can allow item index (i, j) to be either (i<0, i>=size[0], j<0, j>=size[1]).
+# Return an array of boolean that indicates for each item if it can fall
 def canFall(items, fallDirection, size, collision, allow_out_of_bounds=(False, False, False, False)):
     isLocked = [False] * len(items)
     # check for each item individually if it can fall or it is locked
