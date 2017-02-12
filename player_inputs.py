@@ -6,16 +6,25 @@ PlayerInput = namedtuple("PlayerInput",field_names=["player","action","keydown"]
 class PlayerInputs:
     def __init__(self):
         self._mapping = [
-                {pygame.K_d:"right", pygame.K_s:"down", pygame.K_q:"left"},
-                {pygame.K_RIGHT:"right", pygame.K_DOWN:"down", pygame.K_LEFT:"left"}
-                ]
+                { # Player 
+                    pygame.K_d:"right",
+                    pygame.K_s:"down",
+                    pygame.K_q:"left",
+                    pygame.K_z:"up"
+                },
+                { # Player 1
+                    pygame.K_RIGHT:"right",
+                    pygame.K_DOWN:"down",
+                    pygame.K_LEFT:"left",
+                    pygame.K_UP:"up"
+                }
+        ]
 
     def read(self):
         inputs = []
         unused_events = []
         while True:
             event = pygame.event.poll()
-            print(event)
             if event.type == pygame.NOEVENT:
                 break
 
