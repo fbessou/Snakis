@@ -12,7 +12,13 @@ class PlayerInputs:
 
     def read(self):
         inputs = []
-        for event in pygame.event.get():
+        unused_events = []
+        while True:
+            event = pygame.event.poll()
+            print(event)
+            if event.type == pygame.NOEVENT:
+                break
+
             keydown = False
             used = False
             if event.type == pygame.KEYDOWN:
@@ -23,6 +29,9 @@ class PlayerInputs:
                         inputs.append(PlayerInput(player, self._mapping[player][event.key], keydown))
                         used = True
             if not used:
-                pygame.event.post(event)
+                unused_events.append(event)
+
+        for event in unused_events:
+            pygame.event.post(event)
 
         return inputs
