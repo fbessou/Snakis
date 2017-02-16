@@ -9,11 +9,15 @@ import pygame
 from player_inputs import PlayerInputs
 from algo import *
 
-SNAKE_PERIOD = 0.4
+SNAKE_PERIOD = 400
+BLOCK_SIZE = 15
 SIZE = width, height = 720, 600
 BACKGROUND_COLOR = 0, 0, 0
 
 pygame.init()
+pygame.font.init()
+score_font = pygame.font.SysFont("monospace", int(BLOCK_SIZE*1.9))
+score_font.set_bold(True)
 
 
 screen = pygame.display.set_mode(SIZE, pygame.DOUBLEBUF)
@@ -70,6 +74,11 @@ class BoardRenderer(object):
         screen.blit(self._buffer, [(screen.get_width()-self._buffer.get_width()) / 2,
             (screen.get_height()-self._buffer.get_height()) / 2])
 
+        for i in range(len(self._state._players)):
+            score = score_font.render("P"+str(i)+": "+str(self._state._players[i]._score), 1, (100,100,100), (0,0,0))
+            screen.blit(pygame.transform.laplacian(score), (BLOCK_SIZE, BLOCK_SIZE*(i*2+1)))
+
+
 
 class Player(object):
 
@@ -82,7 +91,8 @@ class Player(object):
         self._direction = (0,-1)
         self._can_fall = True
         self._can_move = True
-
+        self._score = 0
+    
     def update(self):
         if not self._can_fall and not self._can_move:
             self._state = "dead"
@@ -136,7 +146,7 @@ class RoundState(object):
         while 1:
             self._update()
             self._render()
-            sleep(SNAKE_PERIOD)
+            pygame.time.wait(SNAKE_PERIOD)
 
 
     def _update(self):
@@ -197,9 +207,10 @@ class RoundState(object):
         component = connectedComponent(self.board._size, lambda i,j:0 if self.board.isFree(i,j) else self.board._tiles[i][j].player+1) 
         for b in range(len(component[0])):
             blocks = component[0][b]
-            if blocks["size"] >= 13.37: # TODO sort components by size, remove biggest first
+            if blocks["size"] >= BLOCK_SIZE: # TODO sort components by size, remove biggest first
                 removeConnectedComponent(b+1, self.board._size, self.board.clear, component[1])
                 print("Player",blocks["grp"],"block size",blocks["size"],"-> destroyed",b+1)
+                self._players[blocks["grp"]-1]._score += (blocks["size"]-BLOCK_SIZE)**2+BLOCK_SIZE;
 
         for event in pygame.event.get():
             if event.type == pygame.VIDEORESIZE: self._renderer.resize((event.w, event.h))
