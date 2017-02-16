@@ -8,6 +8,9 @@ import numpy as np
 import pygame
 from player_inputs import PlayerInputs
 from algo import *
+import os
+
+FONTS_DIR = os.path.join("assets", "fonts")
 
 SNAKE_PERIOD = 400
 BLOCK_SIZE = 15
@@ -16,8 +19,7 @@ BACKGROUND_COLOR = 0, 0, 0
 
 pygame.init()
 pygame.font.init()
-score_font = pygame.font.SysFont("monospace", int(BLOCK_SIZE*1.9))
-score_font.set_bold(True)
+score_font = pygame.font.Font(os.path.join(FONTS_DIR, "Binz.ttf"), int(BLOCK_SIZE*1.8))
 
 
 screen = pygame.display.set_mode(SIZE, pygame.DOUBLEBUF)
@@ -75,8 +77,8 @@ class BoardRenderer(object):
             (screen.get_height()-self._buffer.get_height()) / 2])
 
         for i in range(len(self._state._players)):
-            score = score_font.render("P"+str(i)+": "+str(self._state._players[i]._score), 1, (100,100,100), (0,0,0))
-            screen.blit(pygame.transform.laplacian(score), (BLOCK_SIZE, BLOCK_SIZE*(i*2+1)))
+            score = score_font.render("Player "+str(i)+": "+str(self._state._players[i]._score), 1, (100,100,100), (0,0,0))
+            screen.blit(score, (BLOCK_SIZE, BLOCK_SIZE*(i*2+1)))
 
 
 
