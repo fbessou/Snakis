@@ -12,7 +12,8 @@ import os
 
 FONTS_DIR = os.path.join("assets", "fonts")
 
-SNAKE_PERIOD = 400
+SNAKE_PERIOD = 300
+SNAKE_SIZE = 5
 BLOCK_SIZE = 15
 SIZE = width, height = 720, 600
 BACKGROUND_COLOR = 0, 0, 0
@@ -54,7 +55,7 @@ class BoardRenderer(object):
 
     def render(self, screen):
         board_size = self._board._size
-        random.seed(self._seed)
+        #random.seed(self._seed)
         s = self._scale
         board = self._board
         for y in range(board_size[1]):
@@ -66,9 +67,12 @@ class BoardRenderer(object):
                     pygame.draw.rect(self._buffer, self._state._players[board._tiles[x][y].player]._color, [x*s, self._buffer.get_height() - (y+1)*s, s, s])
 
         for player in self._state._players:
-            for snake_bit in player._snake:
-                x, y = snake_bit
-                pygame.draw.rect(self._buffer, player._color, [x*s, self._buffer.get_height() - (y+1)*s, s, s])
+            for i in range(len(player._snake)):
+                x, y = player._snake[i]
+                if player._state != "frozen" and i == 0: # draw head
+                    pygame.draw.rect(self._buffer, player._color, [x*s+4, self._buffer.get_height() - (y+1)*s + 4, s-8, s-8])
+                else:
+                    pygame.draw.rect(self._buffer, player._color, [x*s, self._buffer.get_height() - (y+1)*s, s, s])
 
             
 
@@ -84,28 +88,38 @@ class BoardRenderer(object):
 
 class Player(object):
 
-    def __init__(self):
-        self._snake = create_snake(5, 23, 5)
-        self._state = ""
+    def __init__(self, board):
         self._color = _rand_col()
         self._direction_vert = 0
         self._direction_horiz = 0
         self._direction = (0,-1)
-        self._can_fall = True
-        self._can_move = True
         self._score = 0
+        self.revive(board)
     
     def update(self):
         if not self._can_fall and not self._can_move:
             self._state = "dead"
+        elif not self._can_move:
+            self._state = "frozen"
     
-    def revive(self, player_num):
-        self._snake = create_snake(5, 20, player_num)
+    def revive(self, board):
+        freeTilesCount = sum(board.isFree(i, board._size[1]-1) for i in range(board._size[0]))
+        x_respawn = int(random.random() * freeTilesCount)
+        j = 0
+        for i in range(board._size[0]):
+            j += board.isFree(i, board._size[1]-1)
+            if j-1 == x_respawn:
+                x_respawn = i
+                break
+
+        self._snake = create_snake(SNAKE_SIZE, board._size[1]-1, x_respawn)
         self._state = ""
         self._direction = (0,-1)
         self._can_fall = True
         self._can_move = True
 
+    def score(self, block_size):
+        self._score += int((((block_size-BLOCK_SIZE)/SNAKE_SIZE)**2 + BLOCK_SIZE / SNAKE_SIZE) * 10);
 
     def move(self):
         first = self._snake[0]
@@ -128,7 +142,8 @@ class Board(object):
 
     def freeze(self, squares, player = -1, dtype = 0, data = None):
         for sq in squares:
-            self._tiles[sq[0]][sq[1]] = Tile(player, dtype, data)
+            if 0 <= sq[0] < self._size[0] and 0 <= sq[1] < self._size[1]:
+                self._tiles[sq[0]][sq[1]] = Tile(player, dtype, data)
 
     def clear(self, i, j):
         self._tiles[i][j] = None
@@ -140,8 +155,8 @@ class RoundState(object):
     def __init__(self, player_inputs):
         self.player_inputs = player_inputs
 
-        self._players = [Player() for _ in range(2)]
         self.board = Board()
+        self._players = [Player(self.board) for _ in range(2)]
         self._renderer = BoardRenderer(self.board, self)
 
     def loop(self):
@@ -203,16 +218,16 @@ class RoundState(object):
             player.update()
             if player._state == "dead":
                 self.board.freeze(player._snake, p)
-                player.revive(p)
+                player.revive(self.board)
 
         # Map
         component = connectedComponent(self.board._size, lambda i,j:0 if self.board.isFree(i,j) else self.board._tiles[i][j].player+1) 
         for b in range(len(component[0])):
             blocks = component[0][b]
-            if blocks["size"] >= BLOCK_SIZE: # TODO sort components by size, remove biggest first
+            if blocks["size"] >= BLOCK_SIZE:
                 removeConnectedComponent(b+1, self.board._size, self.board.clear, component[1])
                 print("Player",blocks["grp"],"block size",blocks["size"],"-> destroyed",b+1)
-                self._players[blocks["grp"]-1]._score += (blocks["size"]-BLOCK_SIZE)**2+BLOCK_SIZE;
+                self._players[blocks["grp"]-1].score(blocks["size"])
 
         for event in pygame.event.get():
             if event.type == pygame.VIDEORESIZE: self._renderer.resize((event.w, event.h))
