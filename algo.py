@@ -1,6 +1,8 @@
 import numpy as np
 
-hexa_transition = [(1,0), (1,1), (0,1), (-1,1), (-1,0), (0,-1)]
+hexa_transition = [
+        [(1,0), (1,1), (0,1), (-1,1), (-1,0), (0,-1)], # even column
+        [(1,-1), (1,0), (0,1), (-1,0), (-1,-1), (0,-1)] # odd column
 
 # Give the strongly connected components in a matrix with given 'size'
 # the function 'grp(i, j)' must return the group value at index (i, j)
@@ -37,7 +39,7 @@ def dfsFill(matrix, i, j, value, allow):
             matrix[i][j] = value
             count += 1
             
-            for step in hexa_transition:
+            for step in hexa_transition[i&1]:
                 count += dfsFill(matrix, i+step[0], j+step[1], value, allow)
     
     return count
@@ -156,7 +158,7 @@ def removeConnectedComponent(component, playgroundSize, clearPlayground, compone
         for j in range(playgroundSize[1]):
             if componentOwnershipMatrix[i][j] == component:
                 clearPlayground(i,j)
-                for e in extraRemoval:
+                for e in extraRemoval[i&1]:
                     ei, ej = i + e[0], j + e[1]
                     if 0 <= ei < playgroundSize[0] and 0 <= ej < playgroundSize[1] and componentOwnershipMatrix[ei][ej] != component:
                         clearPlayground(ei, ej)
