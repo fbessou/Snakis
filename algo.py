@@ -1,5 +1,7 @@
 import numpy as np
 
+hexa_transition = [(1,0), (1,1), (0,1), (-1,1), (-1,0), (0,-1)]
+
 # Give the strongly connected components in a matrix with given 'size'
 # the function 'grp(i, j)' must return the group value at index (i, j)
 # -> adjacent tiles with same group value are in the same component
@@ -34,11 +36,9 @@ def dfsFill(matrix, i, j, value, allow):
         if matrix[i][j] != value and allow(i,j):
             matrix[i][j] = value
             count += 1
-
-            count += dfsFill(matrix, i+1, j+0, value, allow)
-            count += dfsFill(matrix, i-1, j+0, value, allow)
-            count += dfsFill(matrix, i+0, j+1, value, allow)
-            count += dfsFill(matrix, i+0, j-1, value, allow)
+            
+            for step in hexa_transition:
+                count += dfsFill(matrix, i+step[0], j+step[1], value, allow)
     
     return count
 
@@ -151,7 +151,7 @@ def fall(items, can_fall, fallDirection=(0,-1)):
 # clearPlayground(i,j): the function that will perform the removal at index (i,j)
 # componentOwnershipMatrix: result of connectedComponent
 # extraRemoval: additional tiles to remove, given relatively to a component's tile
-def removeConnectedComponent(component, playgroundSize, clearPlayground, componentOwnershipMatrix, extraRemoval=[(1,0), (-1,0), (0,1), (0,-1)]):
+def removeConnectedComponent(component, playgroundSize, clearPlayground, componentOwnershipMatrix, extraRemoval=hexa_transition):
     for i in range(playgroundSize[0]):
         for j in range(playgroundSize[1]):
             if componentOwnershipMatrix[i][j] == component:
