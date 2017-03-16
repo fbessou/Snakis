@@ -140,6 +140,15 @@ class Board(object):
         self._size = (12, 24)
         self._tiles = np.zeros(self._size, dtype=object)
 
+    def getTileCenterPosition(i,j, diameter):
+        cos30 = math.cos(math.pi/6)
+        offsetX = diameter/2
+        offsetY = diameter/2 * cos30
+        if i&1:
+            return (offsetX + i*diameter*cos30, offsetY + j*diameter*cos30)
+        else:
+            return (offsetX + i*diameter*cos30, offsetY + (j+0.5)*diameter*cos30)
+
     def freeze(self, squares, player = -1, dtype = 0, data = None):
         for sq in squares:
             if 0 <= sq[0] < self._size[0] and 0 <= sq[1] < self._size[1]:
