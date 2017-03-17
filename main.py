@@ -8,6 +8,7 @@ import numpy as np
 import pygame
 from player_inputs import PlayerInputs
 from algo import *
+import math
 import os
 
 FONTS_DIR = os.path.join("assets", "fonts")
@@ -57,22 +58,25 @@ class BoardRenderer(object):
         board_size = self._board._size
         #random.seed(self._seed)
         s = self._scale
+        r = int(s * math.cos(math.pi/6)/2 + 0.5)
         board = self._board
         for y in range(board_size[1]):
             for x in range(board_size[0]):
                 bg_color = _rand_col(5)
+                pos = board.getTileCenterPosition(x,y,s)
                 if board.isFree(x,y):
-                    pygame.draw.rect(self._buffer, bg_color, [x*s, self._buffer.get_height() - (y+1)*s, s, s])
+                    pygame.draw.circle(self._buffer, bg_color, pos, r)
                 else:
-                    pygame.draw.rect(self._buffer, self._state._players[board._tiles[x][y].player]._color, [x*s, self._buffer.get_height() - (y+1)*s, s, s])
+                    pygame.draw.circle(self._buffer, self._state._players[board._tiles[x][y].player]._color, pos, r)
 
         for player in self._state._players:
             for i in range(len(player._snake)):
                 x, y = player._snake[i]
+                pos = board.getTileCenterPosition(x,y,s)
                 if player._state != "frozen" and i == 0: # draw head
-                    pygame.draw.rect(self._buffer, player._color, [x*s+4, self._buffer.get_height() - (y+1)*s + 4, s-8, s-8])
+                    pygame.draw.circle(self._buffer, player._color, pos, int(r*0.75))
                 else:
-                    pygame.draw.rect(self._buffer, player._color, [x*s, self._buffer.get_height() - (y+1)*s, s, s])
+                    pygame.draw.circle(self._buffer, player._color, pos, r)
 
             
 
@@ -90,9 +94,7 @@ class Player(object):
 
     def __init__(self, board):
         self._color = _rand_col()
-        self._direction_vert = 0
-        self._direction_horiz = 0
-        self._direction = (0,-1)
+        self._direction = 5
         self._score = 0
         self.revive(board)
     
@@ -114,7 +116,7 @@ class Player(object):
 
         self._snake = create_snake(SNAKE_SIZE, board._size[1]-1, x_respawn)
         self._state = ""
-        self._direction = (0,-1)
+        self._direction = 5
         self._can_fall = True
         self._can_move = True
 
@@ -123,13 +125,13 @@ class Player(object):
 
     def move(self):
         first = self._snake[0]
-        translated = (first[0] + self._direction[0], first[1] + self._direction[1])
+        translated = (first[0] + hexa_transition[first[0]&1][self._direction][0], first[1] + hexa_transition[first[0]&1][self._direction][1])
         del self._snake[-1]
         self._snake = [translated]+self._snake
     
     def nextSquareSnake(self):
         first = self._snake[0]
-        return (first[0] + self._direction[0], first[1] + self._direction[1])
+        return (first[0] + hexa_transition[first[0]&1][self._direction][0], first[1] + hexa_transition[first[0]&1][self._direction][1])
 
 class Board(object):
 
@@ -140,14 +142,15 @@ class Board(object):
         self._size = (12, 24)
         self._tiles = np.zeros(self._size, dtype=object)
 
-    def getTileCenterPosition(i,j, diameter):
+    def getTileCenterPosition(self, i,j, diameter):
         cos30 = math.cos(math.pi/6)
-        offsetX = diameter/2
-        offsetY = diameter/2 * cos30
+        offsetX = diameter/2 * cos30
+        offsetY = diameter/2
+        totalHeight = 0.5*diameter*cos30 + diameter*cos30*self._size[1]
         if i&1:
-            return (offsetX + i*diameter*cos30, offsetY + j*diameter*cos30)
+            return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + j*diameter*cos30) + 0.5))
         else:
-            return (offsetX + i*diameter*cos30, offsetY + (j+0.5)*diameter*cos30)
+            return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + (j+0.5)*diameter*cos30) + 0.5))
 
     def freeze(self, squares, player = -1, dtype = 0, data = None):
         for sq in squares:
@@ -181,25 +184,10 @@ class RoundState(object):
             print(action)
             player = self._players[action.player]
             direction = 0
-            if action.action == "left":
-                direction = -1*[-1, 1][action.keydown]
-            elif action.action == "right":
-                direction = 1*[-1, 1][action.keydown]
-            if direction != 0:
-                player._direction_horiz += direction
-                if player._direction_horiz != 0:
-                    player._direction = (player._direction_horiz, 0)
-
-            direction = 0
-            if action.action == "down":
-                direction = -1*[-1, 1][action.keydown]
-            elif action.action == "up":
-                direction = 1*[-1, 1][action.keydown]
-            if direction != 0:
-                player._direction_vert += direction
-                if player._direction_vert != 0:
-                    player._direction = (0, player._direction_vert)
-
+            if action.action == "left" and action.keydown:
+                player._direction = (player._direction+1)%6
+            elif action.action == "right" and action.keydown:
+                player._direction = (player._direction+5)%6
 
         # Check if snakes can move
         all_snakes = [p._snake for p in self._players]
