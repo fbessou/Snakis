@@ -174,12 +174,18 @@ class RoundState(object):
 
     def _update(self):
         actions = self.player_inputs.read()
+        mv=[
+                {"right":5,"left":1},
+                {"right":0,"up":0,"down":2,"left":2},
+                {"up":1,"left":1,"down":3,"right":3},
+                {"left":2,"right":4},
+                {"down":3,"left":3,"up":5,"right":5},
+                {"down":4,"right":4,"left":0,"up":0}
+        ]
         for action in actions:
             player = self._players[action.player]
-            if action.action == "left" and action.keydown:
-                player._direction = (player._direction+1)%6
-            elif action.action == "right" and action.keydown:
-                player._direction = (player._direction+5)%6
+            if action.action in mv[player._direction] and action.keydown:
+                player._direction = mv[player._direction][action.action]
 
         # Check if snakes can move
         all_snakes = [p._snake for p in self._players]

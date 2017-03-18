@@ -2,7 +2,7 @@ import numpy as np
 
 hexa_transition = [
         [(0,1), (-1,1), (-1,0), (0,-1), (1,0), (1,1)], # even column
-        [(0,1), (-1,0), (-1,-1), (0,-1), (-1,1), (1,0)] # odd column
+        [(0,1), (-1,0), (-1,-1), (0,-1), (1,-1), (1,0)] # odd column
 ]
 # Give the strongly connected components in a matrix with given 'size'
 # the function 'grp(i, j)' must return the group value at index (i, j)
