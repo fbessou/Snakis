@@ -1,6 +1,7 @@
 import numpy as np
 import pygame
 import math
+import colorsys
 
 
 
@@ -16,14 +17,35 @@ def createImage(diffuse_map, normal_map, specular_map, emissive_map, hue_mask, c
             return np.array((0,0,0))
 
 
-    def readColor(diffuse_map, hue_mask, hue_color, pos):
+    def readColor(diffuse_map, new_color_mask, new_color, pos):
         if diffuse_map != None:
-            # D if min(hue.get_at(pos)) == 0 else D.mix(hue_color)
             c = diffuse_map.get_at(pos)
             alpha = c[3]/255 if len(c) >= 4 else 1.0
-            return (np.array(c[:3])/255, alpha)  
+            color = np.array(c[:3])/255  
         else:
-            return (np.array((1,1,1)), 1.0)
+            alpha = 1.0
+            color = np.array((1,1,1))  
+        
+        if new_color_mask != None:
+            mask = max(new_color_mask.get_at(pos)) / 255
+            if mask > 0:
+                newH, newS, newV = colorsys.rgb_to_hsv(*(new_color/255))
+                oldH, oldS, oldV = colorsys.rgb_to_hsv(*color)
+                if oldS*newS == 0:
+                    H = oldH
+                else:
+                    dH = newH-oldH
+                    if dH < -0.5: dH += 1
+                    elif dH > 0.5: dH -= 1
+                    H = np.interp(mask, [0,1], [oldH, oldH+dH])
+                    if H < 0: H += 1
+                    elif H >= 1: H -= 1
+                S = np.interp(mask, [0,1], [1, newS]) * oldS
+                V = np.interp(mask, [0,1], [1, newV]) * oldV
+                color = np.array(colorsys.hsv_to_rgb(H, S, V))
+
+        return (color, alpha)
+            
 
     def readEmissive(emissive_map, pos):
         if emissive_map != None:
@@ -70,4 +92,4 @@ if __name__ == "__main__":
             "shininess": 8
             }
     img = pygame.image.load("assets/images/apple-worm.png")
-    pygame.transform.rotate(img, 10*i)
+    pygame.transform.rotate(img, 10)
