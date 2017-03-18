@@ -3,14 +3,60 @@ import pygame
 import math
 import colorsys
 
+LIGHT={"dir":np.array((0,-3/5,-4/5)),
+        "ambient": np.array((0.5,0.5,0.5)),
+        "diffuse": np.array((0.5,0.5,0.5)),
+        "specular": np.array((0.3,0.3,0.3)),
+        "shininess": 8
+}
+
+class SnakeImage:
+    def __init__(self, color, filename):
+        self._color = color
+        self._filename = filename
+        self._diffuse_map = {}
+        self._normal_map = {}
+        self._specular_map = {}
+        self._emissive_map = {}
+        self._hue_mask = {}
+        for itype in ['straight', 'corner']:
+            self._diffuse_map[itype] = pygame.image.load(self._filename%(itype,"diffuse"))
+            self._normal_map[itype] = pygame.image.load(self._filename%(itype,"normal"))
+            self._specular_map[itype] = pygame.image.load(self._filename%(itype,"specular"))
+            self._emissive_map[itype] = pygame.image.load(self._filename%(itype,"emissive"))
+            self._hue_mask[itype] = pygame.image.load(self._filename%(itype,"hue"))
+
+    def getSnakeTile(self, shape):
+        return images[shape]
+
+    def loadAllTiles(self):
+        for i in range(3):
+            img = loadTile(30*i, 'straight')
+            images[(i,i)] = img
+            images[(i+3,i+3)] = img
+        for i in range(6):
+            img = loadTile(30*i, 'corner')
+            images[(i,(i+5)%6)] = img
+            images[((i+2)%6,(i+3)%6)] = img
+
+
+    def loadTile(self, rotate, itype):
+        diffuse_map = pygame.transform.rotate(self._diffuse_map[itype], rotate) if self._diffuse_map[itype] else None
+        normal_map = pygame.transform.rotate(self._normal_map[itype], rotate) if self._normal_map[itype] else None
+        specular_map = pygame.transform.rotate(self._specular_map[itype], rotate) if self._specular_map[itype] else None
+        emissive_map = pygame.transform.rotate(self._emissive_map[itype], rotate) if self._emissive_map[itype] else None
+        hue_mask = pygame.transform.rotate(self._hue_mask[itype], rotate) if self._hue_mask[itype] else None
+        return createImage(diffuse_map, normal_map, specular_map, emissive_map, hue_mask, self._color, LIGHT)
 
 
 # light: [light_dir, ambient, diffuse, specular, shininess]
-def createImage(diffuse_map, normal_map, specular_map, emissive_map, hue_mask, color, light):
+def createImage(diffuse_map, normal_map, rotate, specular_map, emissive_map, hue_mask, color, light):
 
-    def readNormal(normal_map, pos):
+    def readNormal(normal_map, rotate, pos):
         if normal_map != None:
             n = (np.array(normal_map.get_at(pos)[:3]) / 255.0) * 2 - 1
+            c, s = math.cos(rotate*math.pi/180), math.sin(rotate*math.pi/180)
+            n[0], n[1] = n[0]*c + -n[1]*s, n[0]*s + n[1]*c
             norm = np.linalg.norm(n)
             return (n / norm) if norm else n
         else:
@@ -67,7 +113,7 @@ def createImage(diffuse_map, normal_map, specular_map, emissive_map, hue_mask, c
     for i in range(image_out.get_width()):
         for j in range(image_out.get_height()):
             # (x,y,z)
-            normal = readNormal(normal_map, (i, j))
+            normal = readNormal(normal_map, rotate, (i, j))
             # (r,g,b), alpha
             color, alpha = readColor(diffuse_map, hue_mask, color, (pos))
             # (r,g,b)
@@ -85,11 +131,5 @@ def createImage(diffuse_map, normal_map, specular_map, emissive_map, hue_mask, c
     return image_out
 
 if __name__ == "__main__":
-    light={"dir":np.array((0,-3/5,-4/5)),
-            "ambient": np.array((0.5,0.5,0.5)),
-            "diffuse": np.array((0.5,0.5,0.5)),
-            "specular": np.array((0.3,0.3,0.3)),
-            "shininess": 8
-            }
     img = pygame.image.load("assets/images/apple-worm.png")
     pygame.transform.rotate(img, 10)

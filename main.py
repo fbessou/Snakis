@@ -29,7 +29,7 @@ screen = pygame.display.set_mode(SIZE, pygame.DOUBLEBUF)
 def _rand_col(b=8):
     return [random.getrandbits(b) for _ in range(3)]
 
-Tile = namedtuple("Tile", field_names=["player", "shape", "data"])
+Tile = namedtuple("Tile", field_names=["player", "type", "shape"])
 
 
 
@@ -69,6 +69,7 @@ class BoardRenderer(object):
         for player in self._state._players:
             for i in range(len(player._snake)):
                 x, y = player._snake[i]
+                shape = player._shapes[i]
                 pos = board.getTileCenterPosition(x,y,s)
                 if player._state != "frozen" and i == 0: # draw head
                     pygame.draw.circle(self._buffer, player._color, pos, int(r*0.75))
@@ -91,7 +92,6 @@ class Player(object):
 
     def __init__(self, board):
         self._color = _rand_col()
-        self._direction = 3
         self._score = 0
         self.revive(board)
     
@@ -112,6 +112,7 @@ class Player(object):
                 break
 
         self._snake = create_snake(INITIAL_SNAKE_LENGTH, board._size[1]-1, x_respawn)
+        self._shapes = [(3,3)]*INITIAL_SNAKE_LENGTH
         self._state = ""
         self._direction = 3
         self._can_fall = True
@@ -121,14 +122,17 @@ class Player(object):
         self._score += int((((block_size-MINIMUM_CLUSTER_SIZE)/INITIAL_SNAKE_LENGTH)**2 + MINIMUM_CLUSTER_SIZE / INITIAL_SNAKE_LENGTH) * 10);
 
     def move(self):
-        first = self._snake[0]
-        translated = (first[0] + hexa_transition[first[0]&1][self._direction][0], first[1] + hexa_transition[first[0]&1][self._direction][1])
+        translated = self.nextSquareSnake()
+        shape = (self._shapes[0][1], self._direction)
         del self._snake[-1]
+        del self._shapes[-1]
         self._snake = [translated]+self._snake
+        self._shapes = [shape]+self._shapes
     
     def nextSquareSnake(self):
         first = self._snake[0]
-        return (first[0] + hexa_transition[first[0]&1][self._direction][0], first[1] + hexa_transition[first[0]&1][self._direction][1])
+        return (first[0] + hexa_transition[first[0]&1][self._direction][0],
+                first[1] + hexa_transition[first[0]&1][self._direction][1])
 
 class Board(object):
 
@@ -146,10 +150,11 @@ class Board(object):
         totalHeight = 0.5*diameter*cos30 + diameter*cos30*self._size[1]
         return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + (j+0.5*(~i&1))*diameter*cos30) + 0.5))
 
-    def freeze(self, squares, player = -1, dtype = 0, data = None):
-        for sq in squares:
+    def freeze(self, squares, player = -1, dtype = 0, shapes = []):
+        for i in range(len(squares)):
+            sq = squares[i]
             if 0 <= sq[0] < self._size[0] and 0 <= sq[1] < self._size[1]:
-                self._tiles[sq[0]][sq[1]] = Tile(player, dtype, data)
+                self._tiles[sq[0]][sq[1]] = Tile(player, dtype, shape=shapes[i] if shapes else None)
 
     def clear(self, i, j):
         self._tiles[i][j] = None
@@ -182,10 +187,13 @@ class RoundState(object):
                 {"down":3,"left":3,"up":5,"right":5},
                 {"down":4,"right":4,"left":0,"up":0}
         ]
+        onlyOneMovePerPlayer={}
         for action in actions:
             player = self._players[action.player]
             if action.action in mv[player._direction] and action.keydown:
-                player._direction = mv[player._direction][action.action]
+                onlyOneMovePerPlayer[action.player] = mv[player._direction][action.action]
+        for p in onlyOneMovePerPlayer:
+            self._players[p]._direction = onlyOneMovePerPlayer[p]
 
         # Check if snakes can move
         all_snakes = [p._snake for p in self._players]
@@ -212,7 +220,7 @@ class RoundState(object):
             player = self._players[p]
             player.update()
             if player._state == "dead":
-                self.board.freeze(player._snake, p)
+                self.board.freeze(player._snake, p, player._shapes)
                 player.revive(self.board)
 
         # Map
