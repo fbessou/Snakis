@@ -13,15 +13,15 @@ import os
 
 FONTS_DIR = os.path.join("assets", "fonts")
 
-SNAKE_PERIOD = 300
-SNAKE_SIZE = 5
-BLOCK_SIZE = 15
+GAME_TICK_PERIOD = 300
+INITIAL_SNAKE_LENGTH = 5
+MINIMUM_CLUSTER_SIZE = 15
 SIZE = width, height = 720, 600
 BACKGROUND_COLOR = 0, 0, 0
 
 pygame.init()
 pygame.font.init()
-score_font = pygame.font.Font(os.path.join(FONTS_DIR, "Binz.ttf"), int(BLOCK_SIZE*1.8))
+score_font = pygame.font.Font(os.path.join(FONTS_DIR, "Binz.ttf"), 27)
 
 
 screen = pygame.display.set_mode(SIZE, pygame.DOUBLEBUF)
@@ -29,8 +29,7 @@ screen = pygame.display.set_mode(SIZE, pygame.DOUBLEBUF)
 def _rand_col(b=8):
     return [random.getrandbits(b) for _ in range(3)]
 
-Tile = namedtuple("Tile", field_names=["player", "type", "data"])
-
+Tile = namedtuple("Tile", field_names=["player", "shape", "data"])
 
 
 
@@ -47,11 +46,9 @@ class BoardRenderer(object):
         self.resize((screen.get_width(), screen.get_height()))
 
     def resize(self, dimensions):
-        global screen
         board_size = self._board._size
-        self._scale = int(dimensions[1] / board_size[1])
+        self._scale = int(dimensions[1] / (board_size[1]*math.cos(math.pi/6)))
         self._buffer = pygame.Surface((self._scale*board_size[0], self._scale*board_size[1]))
-        #screen = pygame.display.set_mode(dimensions, pygame.RESIZABLE|pygame.DOUBLEBUF)
 
 
     def render(self, screen):
@@ -86,7 +83,7 @@ class BoardRenderer(object):
 
         for i in range(len(self._state._players)):
             score = score_font.render("Player "+str(i)+": "+str(self._state._players[i]._score), 1, (100,100,100), (0,0,0))
-            screen.blit(score, (BLOCK_SIZE, BLOCK_SIZE*(i*2+1)))
+            screen.blit(score, (MINIMUM_CLUSTER_SIZE, MINIMUM_CLUSTER_SIZE*(i*2+1)))
 
 
 
@@ -94,7 +91,7 @@ class Player(object):
 
     def __init__(self, board):
         self._color = _rand_col()
-        self._direction = 5
+        self._direction = 3
         self._score = 0
         self.revive(board)
     
@@ -114,14 +111,14 @@ class Player(object):
                 x_respawn = i
                 break
 
-        self._snake = create_snake(SNAKE_SIZE, board._size[1]-1, x_respawn)
+        self._snake = create_snake(INITIAL_SNAKE_LENGTH, board._size[1]-1, x_respawn)
         self._state = ""
-        self._direction = 5
+        self._direction = 3
         self._can_fall = True
         self._can_move = True
 
     def score(self, block_size):
-        self._score += int((((block_size-BLOCK_SIZE)/SNAKE_SIZE)**2 + BLOCK_SIZE / SNAKE_SIZE) * 10);
+        self._score += int((((block_size-MINIMUM_CLUSTER_SIZE)/INITIAL_SNAKE_LENGTH)**2 + MINIMUM_CLUSTER_SIZE / INITIAL_SNAKE_LENGTH) * 10);
 
     def move(self):
         first = self._snake[0]
@@ -147,10 +144,7 @@ class Board(object):
         offsetX = diameter/2 * cos30
         offsetY = diameter/2
         totalHeight = 0.5*diameter*cos30 + diameter*cos30*self._size[1]
-        if i&1:
-            return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + j*diameter*cos30) + 0.5))
-        else:
-            return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + (j+0.5)*diameter*cos30) + 0.5))
+        return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + (j+0.5*(~i&1))*diameter*cos30) + 0.5))
 
     def freeze(self, squares, player = -1, dtype = 0, data = None):
         for sq in squares:
@@ -175,15 +169,13 @@ class RoundState(object):
         while 1:
             self._update()
             self._render()
-            pygame.time.wait(SNAKE_PERIOD)
+            pygame.time.wait(GAME_TICK_PERIOD)
 
 
     def _update(self):
         actions = self.player_inputs.read()
         for action in actions:
-            print(action)
             player = self._players[action.player]
-            direction = 0
             if action.action == "left" and action.keydown:
                 player._direction = (player._direction+1)%6
             elif action.action == "right" and action.keydown:
@@ -221,7 +213,7 @@ class RoundState(object):
         component = connectedComponent(self.board._size, lambda i,j:0 if self.board.isFree(i,j) else self.board._tiles[i][j].player+1) 
         for b in range(len(component[0])):
             blocks = component[0][b]
-            if blocks["size"] >= BLOCK_SIZE:
+            if blocks["size"] >= MINIMUM_CLUSTER_SIZE:
                 removeConnectedComponent(b+1, self.board._size, self.board.clear, component[1])
                 print("Player",blocks["grp"],"block size",blocks["size"],"-> destroyed",b+1)
                 self._players[blocks["grp"]-1].score(blocks["size"])
