@@ -13,7 +13,7 @@ import os
 
 FONTS_DIR = os.path.join("assets", "fonts")
 
-GAME_TICK_PERIOD = 300
+GAME_TICK_PERIOD = 170
 INITIAL_SNAKE_LENGTH = 5
 MINIMUM_CLUSTER_SIZE = 15
 SIZE = width, height = 720, 600
@@ -63,7 +63,7 @@ class BoardRenderer(object):
                 pos = board.getTileCenterPosition(x,y,s)
                 if board.isFree(x,y):
                     pygame.draw.circle(self._buffer, bg_color, pos, r)
-                else:
+                elif board._tiles[x][y].player >= 0:
                     pygame.draw.circle(self._buffer, self._state._players[board._tiles[x][y].player]._color, pos, r)
 
         for player in self._state._players:
@@ -140,8 +140,16 @@ class Board(object):
         self.reset()
 
     def reset(self):
-        self._size = (12, 24)
+        self._size = (13, 24)
         self._tiles = np.zeros(self._size, dtype=object)
+        centerX = self._size[0] // 2
+        for x in range(self._size[0]):
+            for y in range(self._size[1]):
+                if y < (1+abs(x-centerX))//2:
+                    self._tiles[x][y] = Tile(-1, 0, None)
+                else:
+                    self._tiles[x][y] = None
+
 
     def getTileCenterPosition(self, i,j, diameter):
         cos30 = math.cos(math.pi/6)
@@ -157,7 +165,8 @@ class Board(object):
                 self._tiles[sq[0]][sq[1]] = Tile(player, dtype, shape=shapes[i] if shapes else None)
 
     def clear(self, i, j):
-        self._tiles[i][j] = None
+        if self._tiles[i][j] == None or self._tiles[i][j].player >= 0 or self._tiles[i][j].type != 0:
+            self._tiles[i][j] = None
 
     def isFree(self, i, j):
         return not self._tiles[i][j]
@@ -220,7 +229,7 @@ class RoundState(object):
             player = self._players[p]
             player.update()
             if player._state == "dead":
-                self.board.freeze(player._snake, p, player._shapes)
+                self.board.freeze(player._snake, p, shapes=player._shapes)
                 player.revive(self.board)
 
         # Map
