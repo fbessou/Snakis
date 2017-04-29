@@ -7,16 +7,19 @@ from collections import namedtuple
 import numpy as np
 import pygame
 from player_inputs import PlayerInputs
+from snake_image import *
 from algo import *
 import math
 import os
+import colorsys
 
 FONTS_DIR = os.path.join("assets", "fonts")
+IMAGES_DIR = os.path.join("assets", "images")
 
 GAME_TICK_PERIOD = 300
 INITIAL_SNAKE_LENGTH = 5
 MINIMUM_CLUSTER_SIZE = 15
-SIZE = width, height = 720, 600
+SIZE = width, height = 720, 900
 BACKGROUND_COLOR = 0, 0, 0
 
 pygame.init()
@@ -26,11 +29,11 @@ score_font = pygame.font.Font(os.path.join(FONTS_DIR, "Binz.ttf"), 27)
 
 screen = pygame.display.set_mode(SIZE, pygame.DOUBLEBUF)
 
-def _rand_col(b=8):
-    return [random.getrandbits(b) for _ in range(3)]
+def _rand_col(s=1, v=1):
+    r,g,b = colorsys.hsv_to_rgb(random.random(), s, v) #[random.getrandbits(b) for _ in range(3)]
+    return [r*255,g*255,b*255]
 
 Tile = namedtuple("Tile", field_names=["player", "type", "shape"])
-
 
 
 def create_snake(size, start_y, start_x):
@@ -47,8 +50,8 @@ class BoardRenderer(object):
 
     def resize(self, dimensions):
         board_size = self._board._size
-        self._scale = int(dimensions[1] / (board_size[1]*math.cos(math.pi/6)))
-        self._buffer = pygame.Surface((self._scale*board_size[0], self._scale*board_size[1]))
+        self._scale = int(dimensions[1] / (board_size[1]+math.cos(math.pi/6)) / math.cos(math.pi/6)+0.5)
+        self._buffer = pygame.Surface((self._scale*board_size[0]*math.cos(math.pi/6), self._scale*board_size[1]))
 
 
     def render(self, screen):
@@ -57,9 +60,10 @@ class BoardRenderer(object):
         s = self._scale
         r = int(s * math.cos(math.pi/6)/2 + 0.5)
         board = self._board
+        self._buffer.fill(_rand_col(0.5,0.1))
         for y in range(board_size[1]):
             for x in range(board_size[0]):
-                bg_color = _rand_col(5)
+                bg_color = _rand_col(0.8,0.3)
                 pos = board.getTileCenterPosition(x,y,s)
                 if board.isFree(x,y):
                     pygame.draw.circle(self._buffer, bg_color, pos, r)
@@ -71,12 +75,15 @@ class BoardRenderer(object):
                 x, y = player._snake[i]
                 shape = player._shapes[i]
                 pos = board.getTileCenterPosition(x,y,s)
-                if player._state != "frozen" and i == 0: # draw head
-                    pygame.draw.circle(self._buffer, player._color, pos, int(r*0.75))
-                else:
-                    pygame.draw.circle(self._buffer, player._color, pos, r)
+                #if player._state != "frozen" and i == 0: # draw head
+                    #pygame.draw.circle(self._buffer, player._color, pos, int(r*0.75))
+                #else:
+                    #pygame.draw.circle(self._buffer, player._color, pos, r)
+                img = player._snakeImages.getSnakeTile(shape)
+                rect = img.get_rect()
+                rect.center = pos
+                self._buffer.blit(img, rect) 
 
-            
 
         # draw buffer on screen
         screen.blit(self._buffer, [(screen.get_width()-self._buffer.get_width()) / 2,
@@ -94,6 +101,7 @@ class Player(object):
         self._color = _rand_col()
         self._score = 0
         self.revive(board)
+        self._snakeImages = SnakeImage(self._color, IMAGES_DIR+"/ugly_snake_%s_%s.png")
     
     def update(self):
         if not self._can_fall and not self._can_move:
@@ -147,8 +155,8 @@ class Board(object):
         cos30 = math.cos(math.pi/6)
         offsetX = diameter/2 * cos30
         offsetY = diameter/2
-        totalHeight = 0.5*diameter*cos30 + diameter*cos30*self._size[1]
-        return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + (j+0.5*(~i&1))*diameter*cos30) + 0.5))
+        totalHeight = 0.5*diameter*cos30 + diameter*self._size[1]
+        return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + ((j+2)+0.5*(~i&1))*diameter*cos30) + 0.5))
 
     def freeze(self, squares, player = -1, dtype = 0, shapes = []):
         for i in range(len(squares)):
