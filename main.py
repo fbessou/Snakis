@@ -68,7 +68,13 @@ class BoardRenderer(object):
                 if board.isFree(x,y):
                     pygame.draw.circle(self._buffer, bg_color, pos, r)
                 else:
-                    pygame.draw.circle(self._buffer, self._state._players[board._tiles[x][y].player]._color, pos, r)
+                    player = self._state._players[board._tiles[x][y].player]
+                    shape = board._tiles[x][y].shape
+                    img = player._snakeImages.getSnakeTile(shape)
+                    rect = img.get_rect()
+                    rect.center = pos
+                    self._buffer.blit(img, rect) 
+                    #pygame.draw.circle(self._buffer, self._state._players[board._tiles[x][y].player]._color, pos, r)
 
         for player in self._state._players:
             for i in range(len(player._snake)):
@@ -132,10 +138,12 @@ class Player(object):
     def move(self):
         translated = self.nextSquareSnake()
         shape = (self._shapes[0][1], self._direction)
+        new_shape = (self._direction, self._direction)
         del self._snake[-1]
         del self._shapes[-1]
+        if self._shapes: self._shapes[0] = shape
         self._snake = [translated]+self._snake
-        self._shapes = [shape]+self._shapes
+        self._shapes = [new_shape]+self._shapes
     
     def nextSquareSnake(self):
         first = self._snake[0]
@@ -158,7 +166,7 @@ class Board(object):
         totalHeight = 0.5*diameter*cos30 + diameter*self._size[1]
         return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + ((j+2)+0.5*(~i&1))*diameter*cos30) + 0.5))
 
-    def freeze(self, squares, player = -1, dtype = 0, shapes = []):
+    def freeze(self, squares, player = -1, shapes = [], dtype = 0):
         for i in range(len(squares)):
             sq = squares[i]
             if 0 <= sq[0] < self._size[0] and 0 <= sq[1] < self._size[1]:
