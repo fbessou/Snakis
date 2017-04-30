@@ -16,7 +16,7 @@ import colorsys
 FONTS_DIR = os.path.join("assets", "fonts")
 IMAGES_DIR = os.path.join("assets", "images")
 
-GAME_TICK_PERIOD = 170
+GAME_TICK_PERIOD = 200
 INITIAL_SNAKE_LENGTH = 5
 MINIMUM_CLUSTER_SIZE = 15
 SIZE = width, height = 720, 900
