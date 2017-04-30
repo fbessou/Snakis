@@ -36,12 +36,10 @@ class SnakeImage:
             img = self.loadTile(60*i, 'straight')
             self.images[(i,i)] = img
             self.images[(i+3,i+3)] = img
-            pygame.image.save(img, 'straight'+str(i)+'.png')
         for i in range(6):
             img = self.loadTile(60*i, 'corner')
             self.images[(i,(i+5)%6)] = img
             self.images[((i+2)%6,(i+3)%6)] = img
-            pygame.image.save(img, 'corner'+str(i)+'.png')
 
 
     def loadTile(self, rotate, itype):
