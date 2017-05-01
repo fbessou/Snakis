@@ -94,7 +94,7 @@ class BoardRenderer(object):
 
 
         # draw buffer on screen
-        screen.blit(self._buffer, [(screen.get_width()-self._buffer.get_width()) / 2,
+        screen.blit(self._buffer, [(screen.get_width()-self._buffer.get_width()),
             (screen.get_height()-self._buffer.get_height()) / 2])
 
         for i in range(len(self._state._players)):
@@ -136,7 +136,7 @@ class Player(object):
         self._can_move = True
 
     def score(self, block_size):
-        self._score += int((((block_size-MINIMUM_CLUSTER_SIZE)/INITIAL_SNAKE_LENGTH)**2 + MINIMUM_CLUSTER_SIZE / INITIAL_SNAKE_LENGTH) * 10);
+        self._score += int((((block_size-MINIMUM_CLUSTER_SIZE)/INITIAL_SNAKE_LENGTH) * 10)) #**2 + MINIMUM_CLUSTER_SIZE / INITIAL_SNAKE_LENGTH) * 10);
 
     def move(self):
         translated = self.nextSquareSnake()
@@ -257,12 +257,17 @@ class RoundState(object):
 
         # Map
         component = connectedComponent(self.board._size, lambda i,j:0 if self.board.isFree(i,j) else self.board._tiles[i][j].player+1) 
+        # score with block explosion and collateral damage
+        for b in range(len(component[0])):
+            blocks = component[0][b]
+            if blocks["size"] >= MINIMUM_CLUSTER_SIZE:
+                extraCount = countAdjancentConnectedComponent(b+1, self.board._size, lambda i,j: not self.board.isFree(i,j), component[1])
+                self._players[blocks["grp"]-1].score(blocks["size"]+extraCount)
+        # remove exploded blocks
         for b in range(len(component[0])):
             blocks = component[0][b]
             if blocks["size"] >= MINIMUM_CLUSTER_SIZE:
                 removeConnectedComponent(b+1, self.board._size, self.board.clear, component[1])
-                print("Player",blocks["grp"],"block size",blocks["size"],"-> destroyed",b+1)
-                self._players[blocks["grp"]-1].score(blocks["size"])
 
         for event in pygame.event.get():
             if event.type == pygame.VIDEORESIZE: self._renderer.resize((event.w, event.h))
