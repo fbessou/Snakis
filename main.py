@@ -140,7 +140,7 @@ class Player(object):
 
     def move(self):
         translated = self.nextSquareSnake()
-        shape = (self._shapes[0][1], self._direction)
+        shape = (self._shapes[0][0], self._direction)
         new_shape = (self._direction, -1)
         del self._snake[-1]
         del self._shapes[-1]

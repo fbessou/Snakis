@@ -48,11 +48,10 @@ class SnakeImage:
             self.images[((i+3)%6), (i+2)%6] = img
         for i in range(6):
             img = self.loadTile(60*i, 'head')
-            self.images[(i,-1)] = img
+            self.images[(i, -1)] = img
         for i in range(6):
             img = self.loadTile(60*i, 'tail')
-            self.images[(i,-1)] = img
-            self.images[(-1,i)] = img
+            self.images[(-1, (i+3)%6)] = img
 
 
     def loadTile(self, rotate, itype):
