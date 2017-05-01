@@ -38,10 +38,9 @@ class SnakeImage:
 
     def loadAllTiles(self):
         self.images = {}
-        for i in range(3):
+        for i in range(6):
             img = self.loadTile(60*i, 'straight')
             self.images[(i,i)] = img
-            self.images[(i+3,i+3)] = img
         for i in range(6):
             img = self.loadTile(60*i, 'corner')
             self.images[((i+5)%6, i)] = img
@@ -133,7 +132,10 @@ def createImage(diffuse_map, normal_map, rotate, specular_map, emissive_map, hue
             # (r,g,b), alpha
             color, alpha = readColor(diffuse_map, hue_mask, new_color, (i,j))
             # (r,g,b)
-            specular = readSpecular(specular_map, (i, j)) * light["specular"]
+            if specular_map is None:
+                specular = light["specular"]
+            else:
+                specular = readSpecular(specular_map, (i, j))
             # i
             emissive = readEmissive(emissive_map, (i, j))
 
