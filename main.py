@@ -17,8 +17,8 @@ FONTS_DIR = os.path.join("assets", "fonts")
 IMAGES_DIR = os.path.join("assets", "images")
 
 GAME_TICK_PERIOD = 200
-INITIAL_SNAKE_LENGTH = 5
-MINIMUM_CLUSTER_SIZE = 15
+INITIAL_SNAKE_LENGTH = 4
+MINIMUM_CLUSTER_SIZE = INITIAL_SNAKE_LENGTH*3
 SIZE = width, height = 720, 900
 BACKGROUND_COLOR = 0, 0, 0
 
@@ -50,8 +50,11 @@ class BoardRenderer(object):
 
     def resize(self, dimensions):
         board_size = self._board._size
-        self._scale = int(dimensions[1] / (board_size[1]+math.cos(math.pi/6)) / math.cos(math.pi/6)+0.5)
-        self._buffer = pygame.Surface((self._scale*board_size[0]*math.cos(math.pi/6), self._scale*board_size[1]))
+        self._scale = dimensions[1] / (board_size[1]+0.5)
+        self._buffer = pygame.Surface((
+            self._scale * ((board_size[0]-1) * math.cos(math.pi/6) + 1),
+            self._scale*board_size[1]
+        ))
 
 
     def render(self, screen):
@@ -66,7 +69,7 @@ class BoardRenderer(object):
                 bg_color = _rand_col(0.8,0.3)
                 pos = board.getTileCenterPosition(x,y,s)
                 if board.isFree(x,y):
-                    pygame.draw.circle(self._buffer, bg_color, pos, r)
+                    pygame.draw.circle(self._buffer, bg_color, pos, int(s/2))
                 elif board._tiles[x][y].player >= 0:
                     player = self._state._players[board._tiles[x][y].player]
                     shape = board._tiles[x][y].shape
@@ -95,8 +98,9 @@ class BoardRenderer(object):
             (screen.get_height()-self._buffer.get_height()) / 2])
 
         for i in range(len(self._state._players)):
-            score = score_font.render("Player "+str(i)+": "+str(self._state._players[i]._score), 1, (100,100,100), (0,0,0))
-            screen.blit(score, (MINIMUM_CLUSTER_SIZE, MINIMUM_CLUSTER_SIZE*(i*2+1)))
+            player = self._state._players[i]
+            score = score_font.render("Player "+str(i)+": "+str(player._score), 1, player._color, (0,0,0))
+            screen.blit(score, (MINIMUM_CLUSTER_SIZE/2, MINIMUM_CLUSTER_SIZE*(i*2+1)))
 
 
 
@@ -168,10 +172,12 @@ class Board(object):
 
     def getTileCenterPosition(self, i,j, diameter):
         cos30 = math.cos(math.pi/6)
-        offsetX = diameter/2 * cos30
+        odd = i&1
+        offsetX = diameter/2
         offsetY = diameter/2
-        totalHeight = 0.5*diameter*cos30 + diameter*self._size[1]
-        return (int(offsetX + i*diameter*cos30 + 0.5), int(totalHeight - (offsetY + ((j+2)+0.5*(~i&1))*diameter*cos30) + 0.5))
+        totalHeight = diameter * (self._size[1] + 0.5)
+        return (int(offsetX + i*diameter*cos30 + 0.5),
+               int(totalHeight - (offsetY + ((1-odd)*0.5 + j)*diameter) + 0.5))
 
     def freeze(self, squares, player = -1, shapes = [], dtype = 0):
         for i in range(len(squares)):
