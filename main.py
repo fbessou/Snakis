@@ -61,15 +61,15 @@ class BoardRenderer(object):
         board_size = self._board._size
         #random.seed(self._seed)
         s = self._scale
-        r = int(s * math.cos(math.pi/6)/2 + 0.5)
+        r = int(s / 5)
         board = self._board
-        self._buffer.fill(_rand_col(0.5,0.1))
+        self._buffer.fill((0, 0, 0))
         for y in range(board_size[1]):
             for x in range(board_size[0]):
-                bg_color = _rand_col(0.8,0.3)
+                bg_color = _rand_col(0.3, 1)
                 pos = board.getTileCenterPosition(x,y,s)
                 if board.isFree(x,y):
-                    pygame.draw.circle(self._buffer, bg_color, pos, int(s/2))
+                     pygame.draw.circle(self._buffer, bg_color, pos, r)
                 elif board._tiles[x][y].player >= 0:
                     player = self._state._players[board._tiles[x][y].player]
                     shape = board._tiles[x][y].shape
@@ -110,7 +110,7 @@ class Player(object):
         self._color = _rand_col()
         self._score = 0
         self.revive(board)
-        self._snakeImages = SnakeImage(self._color, IMAGES_DIR+"/ugly_snake_%s_%s.png")
+        self._snakeImages = SnakeImage(self._color, IMAGES_DIR+"/snake_%s_%s.png")
     
     def update(self):
         if not self._can_fall and not self._can_move:
@@ -159,7 +159,7 @@ class Board(object):
         self.reset()
 
     def reset(self):
-        self._size = (13, 24)
+        self._size = (13, 19)
         self._tiles = np.zeros(self._size, dtype=object)
         centerX = self._size[0] // 2
         for x in range(self._size[0]):
