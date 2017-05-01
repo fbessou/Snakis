@@ -20,12 +20,18 @@ class SnakeImage:
         self._emissive_map = {}
         self._hue_mask = {}
         for itype in ['straight', 'corner', 'head', 'tail']:
-            self._diffuse_map[itype] = pygame.image.load(self._filename%(itype,"diffuse"))
-            self._normal_map[itype] = pygame.image.load(self._filename%(itype,"normal"))
-            self._specular_map[itype] = pygame.image.load(self._filename%(itype,"specular"))
-            self._emissive_map[itype] = pygame.image.load(self._filename%(itype,"emissive"))
-            self._hue_mask[itype] = pygame.image.load(self._filename%(itype,"team"))
+            self._diffuse_map[itype] = self.loadImage(self._filename%(itype,"diffuse"))
+            self._normal_map[itype] = self.loadImage(self._filename%(itype,"normal"))
+            self._specular_map[itype] = self.loadImage(self._filename%(itype,"specular"))
+            self._emissive_map[itype] = self.loadImage(self._filename%(itype,"emissive"))
+            self._hue_mask[itype] = self.loadImage(self._filename%(itype,"team"))
         self.loadAllTiles()
+
+    def loadImage(self, filename):
+        try:
+            return pygame.image.load(filename).convert_alpha()
+        except:
+            return None
 
     def getSnakeTile(self, shape):
         return self.images[shape]
