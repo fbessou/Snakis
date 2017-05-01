@@ -19,7 +19,7 @@ class SnakeImage:
         self._specular_map = {}
         self._emissive_map = {}
         self._hue_mask = {}
-        for itype in ['straight', 'corner']:
+        for itype in ['straight', 'corner', 'head', 'tail']:
             self._diffuse_map[itype] = pygame.image.load(self._filename%(itype,"diffuse"))
             self._normal_map[itype] = pygame.image.load(self._filename%(itype,"normal"))
             self._specular_map[itype] = pygame.image.load(self._filename%(itype,"specular"))
@@ -40,6 +40,13 @@ class SnakeImage:
             img = self.loadTile(60*i, 'corner')
             self.images[((i+5)%6, i)] = img
             self.images[((i+3)%6), (i+2)%6] = img
+        for i in range(6):
+            img = self.loadTile(60*i, 'head')
+            self.images[(i,-1)] = img
+        for i in range(6):
+            img = self.loadTile(60*i, 'tail')
+            self.images[(i,-1)] = img
+            self.images[(-1,i)] = img
 
 
     def loadTile(self, rotate, itype):
