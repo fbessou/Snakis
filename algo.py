@@ -147,6 +147,26 @@ def fall(items, can_fall, fallDirection=(0,-1)):
                 items[i][b] = (items[i][b][0] + fallDirection[0],
                         items[i][b][1] + fallDirection[1])
 
+
+# Count number of adjacent tile of a connected component
+# component: the ID if the connected component to clear
+# playgroundSize: the size of the playground
+# countValue(i,j): the function that will given the value to add to the count for an adjacent tile
+# componentOwnershipMatrix: result of connectedComponent
+# adjacenceList: list of tiles to be considered adjacent
+def countAdjancentConnectedComponent(component, playgroundSize, countValue, componentOwnershipMatrix, adjacenceList=hexa_transition):
+    count = 0
+    for i in range(playgroundSize[0]):
+        for j in range(playgroundSize[1]):
+            if componentOwnershipMatrix[i][j] == component:
+                for e in adjacenceList[i&1]:
+                    ei, ej = i + e[0], j + e[1]
+                    if 0 <= ei < playgroundSize[0] and 0 <= ej < playgroundSize[1]:
+                        if componentOwnershipMatrix[ei][ej] != component:
+                            count += countValue(ei,ej)
+    return count
+
+
 # Clear playground tiles that belong to the given connected component, also remove extra adjacent tiles.
 # component: the ID if the connected component to clear
 # playgroundSize: the size of the playground
