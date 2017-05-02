@@ -1,0 +1,3 @@
+"""
+The snakis game
+"""
