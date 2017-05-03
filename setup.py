@@ -11,4 +11,7 @@ setup(name='SNAKIS',
           'Topic :: Games/Entertainment'
       ],
       long_description=read('README.md'),
+      required_packages=[
+          'pygame'
+      ]
 )
