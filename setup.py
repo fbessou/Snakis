@@ -10,5 +10,5 @@ setup(name='SNAKIS',
           'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
           'Topic :: Games/Entertainment'
       ],
-      long_description=read('README.md')
+      long_description=read('README.md'),
 )
