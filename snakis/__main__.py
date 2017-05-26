@@ -8,6 +8,7 @@ import numpy as np
 import pygame
 from player_inputs import PlayerInputs
 from snake_image import *
+from day_and_night import DayAndNight
 from algo import *
 import math
 import os
@@ -29,9 +30,10 @@ score_font = pygame.font.Font(os.path.join(FONTS_DIR, "Binz.ttf"), 27)
 
 screen = pygame.display.set_mode(SIZE, pygame.DOUBLEBUF)
 
+
 def _rand_col(s=1, v=1):
     r,g,b = colorsys.hsv_to_rgb(random.random(), s, v) #[random.getrandbits(b) for _ in range(3)]
-    return [r*255,g*255,b*255]
+    return (r*255,g*255,b*255)
 
 Tile = namedtuple("Tile", field_names=["player", "type", "shape"])
 
@@ -124,14 +126,16 @@ class BoardRenderer(object):
                 if board.isFree(x,y):
                      pygame.draw.circle(self._buffer, bg_color, pos, r)
                 elif board._tiles[x][y].player >= 0:
-                    player = self._state._players[board._tiles[x][y].player]
+                    player = board._tiles[x][y].player
                     shape = board._tiles[x][y].shape
-                    img = player._snakeImages.getSnakeTile(shape)
+                    img = self._state._imageFactory.getSnakeImages()[player][shape]
                     rect = img.get_rect()
                     rect.center = pos
                     self._buffer.blit(img, rect) 
 
-        for player in self._state._players:
+        
+        for p in range(len(self._state._players)):
+            player = self._state._players[p]
             for i in range(len(player._snake)):
                 x, y = player._snake[i]
                 shape = player._shapes[i]
@@ -140,7 +144,7 @@ class BoardRenderer(object):
                     #pygame.draw.circle(self._buffer, player._color, pos, int(r*0.75))
                 #else:
                     #pygame.draw.circle(self._buffer, player._color, pos, r)
-                img = player._snakeImages.getSnakeTile(shape)
+                img = self._state._imageFactory.getSnakeImages()[p][shape]
                 rect = img.get_rect()
                 rect.center = pos
                 self._buffer.blit(img, rect) 
@@ -164,7 +168,7 @@ class Player(object):
         self._color = _rand_col()
         self._score = 0
         self.revive(board)
-        self._snakeImages = SnakeImage(self._color, IMAGES_DIR+"/snake_%s_%s.png")
+        #self._snakeImages = SnakeImage(self._color, IMAGES_DIR+"/snake_%s_%s.png")
     
     def update(self):
         if not self._can_fall and not self._can_move:
@@ -256,6 +260,10 @@ class RoundState(object):
         self._players = [Player(self.board) for _ in range(2)]
         self._particles = Particles()
         self._renderer = BoardRenderer(self.board, self)
+        colors = [p._color for p in self._players]
+        self._imageFactory = DayAndNight(IMAGES_DIR+"/snake_%s_%s.png", colors)
+        while not self._imageFactory.imagesReady():
+            pygame.time.wait(100)
 
     def loop(self):
         while 1:
