@@ -321,8 +321,9 @@ class RoundState(object):
 
         # remove exploded blocks, and add particles
         def clearAndParticle(p, i, j):
-            self._particles.addParticle(ScoreParticle(self.board.getTileCenterPosition(i,j, self._renderer._scale), "+1", self._players[p]._color))
-            self.board.clear(i,j)
+            if component[1][i][j] != 0:
+                self._particles.addParticle(ScoreParticle(self.board.getTileCenterPosition(i,j, self._renderer._scale), "+1", self._players[p]._color))
+                self.board.clear(i,j)
 
         for b in range(len(component[0])):
             blocks = component[0][b]
