@@ -40,6 +40,59 @@ def create_snake(size, start_y, start_x):
     snake = [(start_x,y) for y in range(start_y, start_y + size)]
     return snake
 
+class Particle(object):
+    def update(self):
+        pass
+    def isAlive(self):
+        return True
+    def render(self, screen):
+        pass
+
+class ScoreParticle(Particle):
+    def __init__(self, position, text, color = (255,255,255), font = score_font, maxDuration = 10):
+        self._position = position
+        self._text = text
+        self._maxDuration = maxDuration
+        self._age = 0
+        self._alive = True
+        self._font = font
+        self._color = color
+
+    def update(self):
+        self._age += 1
+        if self._age > self._maxDuration:
+            self._alive = False
+        self._position = (self._position[0], self._position[1] - 1)
+
+    def isAlive(self):
+        return self._alive
+
+    def render(self, screen):
+        alpha = int(min(1.0, 2 - 2 * self._age / self._maxDuration) * 255)
+        color = (self._color[0], self._color[1], self._color[2], alpha)
+        img = self._font.render(self._text, 1, color)
+        screen.blit(img, (self._position[0] - img.get_width() // 2, self._position[1] - img.get_height() // 2))
+        
+
+class Particles(object):
+    def __init__(self):
+        self._particles = []
+
+    def update(self):
+        newParticles = []
+        for p in self._particles:
+            p.update()
+            if p.isAlive():
+                newParticles.append(p)
+        self._particles = newParticles
+
+    def addParticle(self, particle):
+        self._particles.append(particle)
+
+    def render(self, screen):
+        for p in self._particles:
+            p.render(screen)
+
 class BoardRenderer(object):
 
     def __init__(self, board, state):
@@ -92,6 +145,8 @@ class BoardRenderer(object):
                 rect.center = pos
                 self._buffer.blit(img, rect) 
 
+        # Draw particles
+        self._state._particles.render(self._buffer)
 
         # draw buffer on screen
         screen.blit(self._buffer, [(screen.get_width()-self._buffer.get_width()),
@@ -101,7 +156,6 @@ class BoardRenderer(object):
             player = self._state._players[i]
             score = score_font.render("Player "+str(i)+": "+str(player._score), 1, player._color, (0,0,0))
             screen.blit(score, (MINIMUM_CLUSTER_SIZE/2, MINIMUM_CLUSTER_SIZE*(i*2+1)))
-
 
 
 class Player(object):
@@ -136,7 +190,7 @@ class Player(object):
         self._can_move = True
 
     def score(self, block_size):
-        self._score += int((((block_size-MINIMUM_CLUSTER_SIZE)/INITIAL_SNAKE_LENGTH) * 10)) #**2 + MINIMUM_CLUSTER_SIZE / INITIAL_SNAKE_LENGTH) * 10);
+        self._score += block_size #int((((block_size-MINIMUM_CLUSTER_SIZE)/INITIAL_SNAKE_LENGTH) * 10)) #**2 + MINIMUM_CLUSTER_SIZE / INITIAL_SNAKE_LENGTH) * 10);
 
     def move(self):
         translated = self.nextSquareSnake()
@@ -200,6 +254,7 @@ class RoundState(object):
 
         self.board = Board()
         self._players = [Player(self.board) for _ in range(2)]
+        self._particles = Particles()
         self._renderer = BoardRenderer(self.board, self)
 
     def loop(self):
@@ -263,11 +318,18 @@ class RoundState(object):
             if blocks["size"] >= MINIMUM_CLUSTER_SIZE:
                 extraCount = countAdjancentConnectedComponent(b+1, self.board._size, lambda i,j: not self.board.isFree(i,j), component[1])
                 self._players[blocks["grp"]-1].score(blocks["size"]+extraCount)
-        # remove exploded blocks
+
+        # remove exploded blocks, and add particles
+        def clearAndParticle(p, i, j):
+            self._particles.addParticle(ScoreParticle(self.board.getTileCenterPosition(i,j, self._renderer._scale), "+1", self._players[p]._color))
+            self.board.clear(i,j)
+
         for b in range(len(component[0])):
             blocks = component[0][b]
             if blocks["size"] >= MINIMUM_CLUSTER_SIZE:
-                removeConnectedComponent(b+1, self.board._size, self.board.clear, component[1])
+                removeConnectedComponent(b+1, self.board._size, lambda i,j: clearAndParticle(component[0][b]["grp"]-1, i, j), component[1])
+
+        self._particles.update()
 
         for event in pygame.event.get():
             if event.type == pygame.VIDEORESIZE: self._renderer.resize((event.w, event.h))
@@ -279,7 +341,6 @@ class RoundState(object):
         self._clear()
         self._renderer.render(screen)
 
-        #pygame.draw.circle(screen, BLUE, [x,y], s)
         pygame.display.flip()
 
 
