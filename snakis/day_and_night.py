@@ -39,23 +39,48 @@ class DayAndNight:
             SimpleThread(self.loadAsyncSlave).start()
 
     def updateLight(self):
-        day_duration = 1666666
+        day_duration = 24
         if self._daytime is None:
             self._light = {}
             self._daytime = random.randint(0, day_duration-1)
         else:
             self._daytime = (self._daytime+1) % day_duration
-
+        print("Time:",self._daytime, '/', day_duration)
         t = self._daytime / day_duration
 
-        amb = min(max(0.2, cos(t * 2 * pi)*0.5 + 0.3), 0.6)
-        dif = amb / 0.6#min(cos(t*2*pi)/3+0.666, 1-amb)
-        spe = dif / 4
-        d = np.array((cos(t*2*pi),abs(sin(t*2*pi)),0.33))
+        colors = np.matrix([
+            [150, 220, 255], # night blue
+            [150, 220, 255], # night blue
+            [255, 170, 180],  # pink sunrise
+            [255, 220, 150],   # orange
+            [255, 246, 186],    # yellow
+            [255, 255, 255],    # bright yellow
+            [255, 255, 255],    # bright yellow
+            [255, 246, 186],    # yellow
+            [255, 220, 150],   # orange
+            [255, 170, 180],  # pink sunset
+            [150, 220, 255], # night blue
+        ]).transpose() / 255
+        times=np.array((
+            0, 4, 6, 8, 10, 12, 16, 18, 20, 22, 24))
+        intensities=np.array((
+            0.4, 0.5, 0.6, 0.75, 0.9, 1.0, 1.0, 0.9, 0.75, 0.6, 0.5))
+        angles=np.array((
+            90, 45, 0, 25, 50, 75, 105, 130, 155, 180, 135))
+        color = np.array((
+            np.interp(self._daytime, times, np.array(colors[0])[0]),
+            np.interp(self._daytime, times, np.array(colors[1])[0]),
+            np.interp(self._daytime, times, np.array(colors[2])[0])
+            ))
+        I = np.interp(self._daytime, times, intensities)
+        A = np.interp(self._daytime, times, angles)
+        dif = I * 2/3
+        amb = I * 1/3
+        d = np.array((cos(A*pi/180),abs(sin(A*pi/180)), 0.9))
 
-        self._light["ambient"] = np.array((1,1,1)) * amb
-        self._light["diffuse"] = np.array((1,1,1)) * dif
-        self._light["specular"] = np.array((1,1,1)) * spe
+        self._light["ambient"] = color * amb
+        self._light["diffuse"] = color * dif
+        self._light["specular"] = 0.4
         self._light["shininess"] = 16
         self._light["dir"] = - d / np.linalg.norm(d)
 
@@ -73,7 +98,7 @@ class DayAndNight:
         print("Please keep waiting...")
         
         while True:            
-            print("I am the master, mouhahaha! *whipping*")
+            print("I am the master, mouhahaha! *whipping the slaves*")
 
             # the time has changed
             self.updateLight()
@@ -239,7 +264,7 @@ class DayAndNight:
                 n_dot_dir = np.dot(n, l_dir)
                 spec = (max(0.0, np.dot(n, H)) ** l_shi) * spec if -n_dot_dir > 0 else 0.0
                 diff = max(0.0, -n_dot_dir) * l_dif
-                c = (diff + l_amb + em) * color + spec
+                c = (diff + l_amb + em) * color + spec*l_dif
                 
                 r, g, b = np.int_(np.clip(c, 0.0, 1.0) * 255)
                 image_out.set_at((x,y), (r, g, b, int(alpha*255)))

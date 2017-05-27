@@ -121,7 +121,7 @@ class BoardRenderer(object):
         self._buffer.fill((0, 0, 0))
         for y in range(board_size[1]):
             for x in range(board_size[0]):
-                bg_color = _rand_col(0.3, 1)
+                bg_color = _rand_col(0.3, 0.2)
                 pos = board.getTileCenterPosition(x,y,s)
                 if board.isFree(x,y):
                      pygame.draw.circle(self._buffer, bg_color, pos, r)
