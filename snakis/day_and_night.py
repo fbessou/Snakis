@@ -93,7 +93,9 @@ class DayAndNight:
 
     def loadAsyncMaster(self):
         print("Loading images, please wait...")
+        t =time.time()
         self.initialLoad()
+        print("Initial load took", time.time()-t, "sec")
 
         print("Please keep waiting...")
         
@@ -121,8 +123,9 @@ class DayAndNight:
     def loadAsyncSlave(self):
         while True:
             task_id = self._task_queue.get()
+            t=time.time()
             self._image_factory[task_id] = self.generateAllImages(self._player_colors[task_id])
-            print("I am a slave and I worked for free on task "+str(task_id))
+            print("I am a slave and I have worked for free on task", task_id, "for", time.time()-t, "sec")
             self._task_queue.task_done()
 
     def initialLoad(self):
@@ -159,70 +162,78 @@ class DayAndNight:
     def rotateNormalMap(self, normal_map, rotate):
         if normal_map is None:
             return None
-
+        
+        t = time.time()
         w, h = normal_map.get_width(), normal_map.get_height()
-        c, s = cos(rotate*pi/180), sin(rotate*pi/180)
+        c, s = cos(radians(rotate)), sin(radians(rotate))
         matrix = np.matrix([[c,-s, 0],
                             [s, c, 0],
                             [0, 0, 1]])
+        
+        # surface to 3d matrix
+        pxl = pygame.surfarray.array3d(normal_map).reshape((w*h, 3))
+        # colors to vectors
+        n = pxl / 127.5 - 1
+        # apply rotation to vectors
+        transformed = np.array(n * matrix)
+        # normalize vectors
+        transformed /= np.sqrt(np.einsum('...i,...i', transformed, transformed))[..., np.newaxis]
+        new_map = transformed.reshape((w,h,3))
 
-        new_map = np.zeros(shape=(w,h,3), dtype=float)
-        for x in range(w):
-            for y in range(h):
-                n = (np.array(normal_map.get_at((x,y))[:3]) / 255.0) * 2 - 1
-                n = np.array((matrix * np.matrix(n).transpose()).transpose())[0]
-                norm = np.linalg.norm(n)
-                new_map[x][y] = n / norm if norm else n
+        print("rotateNormalMap took", time.time()-t, "sec")
+        
         return new_map
 
     def mergeDiffuseAndHue(self, diffuse_map, new_color_mask, new_color):
         w, h = diffuse_map.get_width(), diffuse_map.get_height()
+        
+        # surface to 3d matrix, to range [0,1]
+        diffuse = pygame.surfarray.array3d(diffuse_map) / 255
+        alpha_map = pygame.surfarray.array_alpha(diffuse_map).reshape((w,h)) / 255
+        mask = pygame.surfarray.array3d(new_color_mask).max(2) / 255 if new_color_mask != None else None
+        
+        newH, newS, newV = colorsys.rgb_to_hsv(*(np.array(new_color)/255))
+        
         matrix = np.zeros(shape=(w,h,4), dtype=float)
-
+        t = time.time()
         for x in range(w):
             for y in range(h):
-                if diffuse_map != None:
-                    c = diffuse_map.get_at((x,y))
-                    alpha = c[3]/255 if len(c) >= 4 else 1.0
-                    color = np.array(c[:3])/255  
-                else:
-                    alpha = 1.0
-                    color = np.array((1.,1.,1.))  
-        
-                if new_color_mask != None:
-                    m = new_color_mask.get_at((x,y))
-                    mask = max(m[:3]) / 255
-                    if len(m) >= 4: mask *= m[3]/255
-                    if mask > 0:
-                        newH, newS, newV = colorsys.rgb_to_hsv(*(np.array(new_color)/255))
-                        oldH, oldS, oldV = colorsys.rgb_to_hsv(*color)
-                        if oldS*newS == 0:
-                            H = oldH
-                        else:
-                            dH = newH-oldH
-                            if dH < -0.5: dH += 1
-                            elif dH > 0.5: dH -= 1
-                            H = np.interp(mask, [0,1], [oldH, oldH+dH])
-                            if H < 0: H += 1
-                            elif H >= 1: H -= 1
-                        S = np.interp(mask, [0,1], [1, newS]) * oldS
-                        V = np.interp(mask, [0,1], [1, newV]) * oldV
-                        color = np.array(colorsys.hsv_to_rgb(H, S, V))
-                matrix[x][y][:3] = color
-                matrix[x][y][3] = alpha
+                matrix[x][y][3] = alpha_map[x][y]
+                if matrix[x][y][3]:
+                    color = diffuse[x][y]
+            
+                    if new_color_mask != None:
+                        m = mask[x][y]
+                        if m:
+                            oldH, oldS, oldV = colorsys.rgb_to_hsv(*color)
+                            if oldS*newS == 0:
+                                H = oldH
+                            else:
+                                dH = newH-oldH
+                                if dH < -0.5: dH += 1
+                                elif dH > 0.5: dH -= 1
+                                H = np.interp(m, [0,1], [oldH, oldH+dH])
+                                if H < 0: H += 1
+                                elif H >= 1: H -= 1
+                            S = np.interp(m, [0,1], [1, newS]) * oldS
+                            V = np.interp(m, [0,1], [1, newV]) * oldV
+                            color = np.array(colorsys.hsv_to_rgb(H, S, V))
+                    matrix[x][y][:3] = color
 
+        print("mergeDiffuseAndHue took", time.time()-t, "sec")
         return matrix
     
     def createIntensityMatrixFromSurface(self, img):
         if img is None:
             return None
-        w, h = img.get_width(), img.get_height()
-        matrix = np.zeros(shape=(w,h), dtype=float)
 
-        for x in range(w):
-            for y in range(h):
-                matrix[x][y] = min(img.get_at((x,y))) / 255
-        return matrix
+        t = time.time()
+        w, h = img.get_width(), img.get_height()
+        # surface to 3d matrix, min of each channel per pixel, to range [0,1]
+        out = pygame.surfarray.array3d(img).min(2) / 255
+
+        print("intensityFromSurface  took", time.time()-t, "sec")
+        return out
     
     def generateAllImages(self, player_color):
         images = {}
@@ -238,6 +249,7 @@ class DayAndNight:
         return images
 
     def makeImage(self, st, rotate, new_color):
+        t = time.time()
         normal = self._raw[st+'normal'+str(rotate)]
         diffuse = self._raw[st+'diffuse'+str(rotate)+str(new_color)]
         emissive = self._raw[st+'emissive'+str(rotate)]
@@ -269,6 +281,7 @@ class DayAndNight:
                 r, g, b = np.int_(np.clip(c, 0.0, 1.0) * 255)
                 image_out.set_at((x,y), (r, g, b, int(alpha*255)))
 
+        print("makeImage took", time.time()-t, "sec")
         return image_out
 
 
