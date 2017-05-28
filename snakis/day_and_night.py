@@ -44,7 +44,7 @@ class DayAndNight:
             self._light = {}
             self._daytime = random.randint(0, day_duration-1)
         else:
-            self._daytime = (self._daytime+1) % day_duration
+            self._daytime = (self._daytime+0.25) % day_duration
         print("Time:",self._daytime, '/', day_duration)
         t = self._daytime / day_duration
 
@@ -93,12 +93,8 @@ class DayAndNight:
 
     def loadAsyncMaster(self):
         print("Loading images, please wait...")
-        t =time.time()
         self.initialLoad()
-        print("Initial load took", time.time()-t, "sec")
 
-        print("Please keep waiting...")
-        
         while True:            
             print("I am the master, mouhahaha! *whipping the slaves*")
 
@@ -117,7 +113,7 @@ class DayAndNight:
             self._is_initialized = True
 
             # Take some rest until next task
-            time.sleep(0.0)
+            time.sleep(1.0)
 
 
     def loadAsyncSlave(self):
@@ -142,9 +138,12 @@ class DayAndNight:
                         self._raw[st+dt+str(r)] = pygame.transform.rotate(img, r)
                     else:
                         self._raw[st+dt+str(r)] = None
+                
+                w,h = self._raw[st+'diffuse'+str(r)].get_width(), self._raw[st+'diffuse'+str(r)].get_height()
+                self._raw[st+'size'+str(r)] = (w,h)
 
                 # convert normal map to matrix
-                self._raw[st+'normal'+str(r)] = self.rotateNormalMap(self._raw[st+'normal'+str(r)], r)
+                self._raw[st+'normal'+str(r)] = self.rotateNormalMap(self._raw[st+'normal'+str(r)], r, (w,h))
 
                 # convert image mask to matrix
                 self._raw[st+'specular'+str(r)] = self.createIntensityMatrixFromSurface(
@@ -154,16 +153,15 @@ class DayAndNight:
 
                 # merge diffuse and hue map, per player
                 for c in self._player_colors:
-                    self._raw[st+'diffuse'+str(r)+str(c)] = self.mergeDiffuseAndHue(
+                    self._raw[st+'diffuse'+str(r)+str(c)], self._raw[st+'alpha'+str(r)] = self.mergeDiffuseAndHue(
                             self._raw[st+'diffuse'+str(r)],
                             self._raw[st+'team'+str(r)],
                             c)
 
-    def rotateNormalMap(self, normal_map, rotate):
+    def rotateNormalMap(self, normal_map, rotate, size):
         if normal_map is None:
-            return None
+            return np.zeros((size[0], size[1], 3))
         
-        t = time.time()
         w, h = normal_map.get_width(), normal_map.get_height()
         c, s = cos(radians(rotate)), sin(radians(rotate))
         matrix = np.matrix([[c,-s, 0],
@@ -178,9 +176,7 @@ class DayAndNight:
         transformed = np.array(n * matrix)
         # normalize vectors
         transformed /= np.sqrt(np.einsum('...i,...i', transformed, transformed))[..., np.newaxis]
-        new_map = transformed.reshape((w,h,3))
-
-        print("rotateNormalMap took", time.time()-t, "sec")
+        new_map = transformed#.reshape((w,h,3))
         
         return new_map
 
@@ -189,17 +185,19 @@ class DayAndNight:
         
         # surface to 3d matrix, to range [0,1]
         diffuse = pygame.surfarray.array3d(diffuse_map) / 255
-        alpha_map = pygame.surfarray.array_alpha(diffuse_map).reshape((w,h)) / 255
+        # extract alpha channel from surface
+        alpha_map = pygame.surfarray.array_alpha(diffuse_map)
+        # mask surface to 2d matrix in range [0,1]
         mask = pygame.surfarray.array3d(new_color_mask).max(2) / 255 if new_color_mask != None else None
         
+        # New color in HSV
         newH, newS, newV = colorsys.rgb_to_hsv(*(np.array(new_color)/255))
         
-        matrix = np.zeros(shape=(w,h,4), dtype=float)
-        t = time.time()
+        colors = np.zeros(shape=(w,h,3), dtype=float)
+
         for x in range(w):
             for y in range(h):
-                matrix[x][y][3] = alpha_map[x][y]
-                if matrix[x][y][3]:
+                if alpha_map[x][y]:
                     color = diffuse[x][y]
             
                     if new_color_mask != None:
@@ -218,21 +216,18 @@ class DayAndNight:
                             S = np.interp(m, [0,1], [1, newS]) * oldS
                             V = np.interp(m, [0,1], [1, newV]) * oldV
                             color = np.array(colorsys.hsv_to_rgb(H, S, V))
-                    matrix[x][y][:3] = color
+                    colors[x][y] = color
 
-        print("mergeDiffuseAndHue took", time.time()-t, "sec")
-        return matrix
+        return colors.reshape((w*h, 3)), alpha_map
     
     def createIntensityMatrixFromSurface(self, img):
         if img is None:
             return None
 
-        t = time.time()
         w, h = img.get_width(), img.get_height()
         # surface to 3d matrix, min of each channel per pixel, to range [0,1]
-        out = pygame.surfarray.array3d(img).min(2) / 255
+        out = pygame.surfarray.array3d(img).reshape((w*h,3)).min(1) / 255
 
-        print("intensityFromSurface  took", time.time()-t, "sec")
         return out
     
     def generateAllImages(self, player_color):
@@ -249,39 +244,41 @@ class DayAndNight:
         return images
 
     def makeImage(self, st, rotate, new_color):
-        t = time.time()
         normal = self._raw[st+'normal'+str(rotate)]
         diffuse = self._raw[st+'diffuse'+str(rotate)+str(new_color)]
+        alpha = self._raw[st+'alpha'+str(rotate)]
         emissive = self._raw[st+'emissive'+str(rotate)]
         specular = self._raw[st+'specular'+str(rotate)]
-        w, h = diffuse.shape[:2]
+        w, h = self._raw[st+'size'+str(rotate)]
 
         l_dir = self._light["dir"]
         l_spe = self._light["specular"]
         l_dif = self._light["diffuse"]
         l_amb = self._light["ambient"]
         l_shi = self._light["shininess"]
+        
         H = np.array((0,0,1)) - l_dir
         H /= np.linalg.norm(H)
 
-        image_out = pygame.Surface((w,h), pygame.SRCALPHA)
-        for x in range(w):
-            for y in range(h):
-                spec = l_spe if specular is None else specular[x][y]
-                em = 0 if emissive is None else emissive[x][y]
-                n = np.array((0,0,0)) if normal is None else normal[x][y]
-                color = diffuse[x][y][:3]
-                alpha = diffuse[x][y][3]
-                
-                n_dot_dir = np.dot(n, l_dir)
-                spec = (max(0.0, np.dot(n, H)) ** l_shi) * spec if -n_dot_dir > 0 else 0.0
-                diff = max(0.0, -n_dot_dir) * l_dif
-                c = (diff + l_amb + em) * color + spec*l_dif
-                
-                r, g, b = np.int_(np.clip(c, 0.0, 1.0) * 255)
-                image_out.set_at((x,y), (r, g, b, int(alpha*255)))
+        if specular is None:
+            specular = l_spe
+        if emissive is None:
+            emissive = 0
 
-        print("makeImage took", time.time()-t, "sec")
+        # compute lighting
+        n_dot_dir = np.maximum(normal.dot(-l_dir), 0)
+        spec = (np.maximum(normal.dot(H), 0) ** l_shi) * specular * np.bool_(n_dot_dir)
+        diff = n_dot_dir[...,np.newaxis] * l_dif
+        c = (diff + l_amb + emissive) * diffuse + spec[...,np.newaxis] * l_dif
+        pixels = np.int_(np.clip(c * 255, 0, 255)).reshape((w,h,3))
+
+        # convert to surface
+        image_out = pygame.surfarray.make_surface(pixels).convert_alpha()
+
+        # apply alpha mask
+        out_alpha = pygame.surfarray.pixels_alpha(image_out)
+        np.copyto(out_alpha, alpha)
+        
         return image_out
 
 
